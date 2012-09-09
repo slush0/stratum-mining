@@ -215,10 +215,14 @@ class TemplateRegistry(object):
         block_hash_hex = "%064x" % hash_int
         header_hex = binascii.hexlify(header_bin)
                  
-        target = self.diff_to_target(difficulty)
-        
-        if hash_int > target:
+        target_user = self.diff_to_target(difficulty)        
+        if hash_int > target_user:
             return (False, "Share is above target", None, None)
+
+        # Mostly for debugging purposes
+        target_info = self.diff_to_target(100000)
+        if hash_int <= target_info:
+            log.info("Yay, share with diff above 100000")
 
         # 5. Compare hash with target of the network        
         if hash_int <= job.target:
