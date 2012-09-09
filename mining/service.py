@@ -83,13 +83,10 @@ class MiningService(GenericService):
         (is_valid, reason, block_header, block_hash) = Interfaces.template_registry.submit_share(job_id,
                                                 worker_name, extranonce1_bin, extranonce2, ntime, nonce, difficulty,
                                                 Interfaces.share_manager.on_submit_block)
-        
-        if block_header != None:
-            # block header is missing when template registry was unable to build it
-            # from given parameters. Client side is probably broken, storing such
-            # submit don't have any sense.                   
-            Interfaces.share_manager.on_submit_share(worker_name, block_header, block_hash, difficulty,
-                                              Interfaces.timestamper.time(), is_valid)
+   
+        # block_header and block_hash may be None when submitted data are corrupted     
+        Interfaces.share_manager.on_submit_share(worker_name, block_header, block_hash, difficulty,
+                                                 Interfaces.timestamper.time(), is_valid)
         
         if not is_valid:
             raise SubmitException(reason)

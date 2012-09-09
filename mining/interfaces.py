@@ -5,17 +5,28 @@
 ''' 
 
 import time
+from twisted.internet import reactor, defer
 
 import stratum.logger
 log = stratum.logger.get_logger('interfaces')
 
 class WorkerManagerInterface(object):
+    def __init__(self):
+        # Fire deferred when manager is ready
+        self.on_load = defer.Deferred()
+        self.on_load.callback(True)
+        
     def authorize(self, worker_name, worker_password):
         return True
 
 class ShareManagerInterface(object):
+    def __init__(self):
+        # Fire deferred when manager is ready
+        self.on_load = defer.Deferred()
+        self.on_load.callback(True)
+
     def on_submit_share(self, worker_name, block_header, block_hash, shares, timestamp, is_valid):
-        log.info("%s %s %s" % ('Valid' if is_valid else 'INVALID', worker_name, block_hash))
+        log.info("%s %s %s" % (block_hash, 'valid' if is_valid else 'INVALID', worker_name))
     
     def on_submit_block(self, worker_name, block_header, block_hash, timestamp, is_accepted):
         log.info("Block %s %s" % (block_hash, 'ACCEPTED' if is_accepted else 'REJECTED'))

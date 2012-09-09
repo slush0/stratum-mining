@@ -1,4 +1,5 @@
 import util
+from twisted.internet import defer
 
 import stratum.logger
 log = stratum.logger.get_logger('coinbaser')
@@ -10,11 +11,13 @@ class SimpleCoinbaser(object):
     for all generated blocks.'''
     
     def __init__(self, bitcoin_rpc, address):
+        # Fire callback when coinbaser is ready
+        self.on_load = defer.Deferred()
+        
         self.address = address
         self.is_valid = False # We need to check if pool can use this address
         
         self.bitcoin_rpc = bitcoin_rpc
-        
         self._validate()
 
     def _validate(self):
@@ -26,6 +29,10 @@ class SimpleCoinbaser(object):
         if result['isvalid'] and result['ismine']:
             self.is_valid = True
             log.info("Coinbase address '%s' is valid" % self.address)
+            
+            if not self.on_load.called:
+                self.on_load.callback(True)
+                
         else:
             self.is_valid = False
             log.error("Coinbase address '%s' is NOT valid!" % self.address)
