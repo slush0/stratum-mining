@@ -2,6 +2,7 @@
 # Send notification to Stratum mining instance on localhost that there's new bitcoin block
 # You can use this script directly as an variable for -blocknotify argument:
 # 	./bitcoind -blocknotify="blocknotify.sh --password admin_password"
+# This is also very basic example how to use Stratum protocol in native Python
 
 import socket
 import json
@@ -24,21 +25,26 @@ if args.password == None:
 	
 message = {'id': 1, 'method': 'mining.update_block', 'params': [args.password]}
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((args.host, args.port))
-s.sendall(json.dumps(message)+"\n")
-data = s.recv(16000)
-s.close()
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((args.host, args.port))
+    s.sendall(json.dumps(message)+"\n")
+    data = s.recv(16000)
+    s.close()
+except IOError:
+    print "blocknotify: Cannot connect to the pool"
+    sys.exit()
 
 for line in data.split("\n"):
     if not line.strip():
+    	# Skip last line which doesn't contain any message
         continue
 
     message = json.loads(line)
     if message['id'] == 1:
         if message['result'] == True:
-	        print "blocknotify done in %.03f sec" % (time.time() - start)
+	        print "blocknotify: done in %.03f sec" % (time.time() - start)
         else:
-            print "Error during request:", message['error'][1]
+            print "blocknotify: Error during request:", message['error'][1]
     else:
-        print "Unexpected message from the server:", message
+        print "blocknotify: Unexpected message from the server:", message

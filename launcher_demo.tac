@@ -1,4 +1,4 @@
-# Run me with "twistd -ny launcher_demo.tac"
+# Run me with "twistd -ny launcher_demo.tac -l -"
 
 # Add conf directory to python path.
 # Configuration file is standard python module.
