@@ -3,7 +3,7 @@ from subscription import MiningSubscription
 from twisted.internet import defer
 
 @defer.inlineCallbacks
-def setup():
+def setup(on_startup):
     '''Setup mining service internal environment.
     You should not need to change this. If you
     want to use another Worker manager or Share manager,
@@ -48,4 +48,5 @@ def setup():
     
     import stratum.logger
     log = stratum.logger.get_logger('mining')
-    log.info("MINING SERVICE IS READY")    
+    log.info("MINING SERVICE IS READY")
+    on_startup.callback(True)  
