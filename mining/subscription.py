@@ -11,7 +11,7 @@ class MiningSubscription(Subscription):
     event = 'mining.notify'
     
     @classmethod
-    def on_block(cls, is_new_block):
+    def on_template(cls, is_new_block):
         '''This is called when TemplateRegistry registers
            new block which we have to broadcast clients.'''
         

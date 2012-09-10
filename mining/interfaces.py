@@ -19,12 +19,28 @@ class WorkerManagerInterface(object):
     def authorize(self, worker_name, worker_password):
         return True
 
+class ShareLimiterInterface(object):
+    '''Implement difficulty adjustments here'''
+    
+    def submit(self, connection_ref, current_difficulty, timestamp):
+        '''connection - weak reference to Protocol instance
+           current_difficulty - difficulty of the connection
+           timestamp - submission time of current share
+           
+           - raise SubmitException for stop processing this request
+           - call mining.set_difficulty on connection to adjust the difficulty'''
+        pass
+    
 class ShareManagerInterface(object):
     def __init__(self):
         # Fire deferred when manager is ready
         self.on_load = defer.Deferred()
         self.on_load.callback(True)
 
+    def on_network_block(self, prevhash):
+        '''Prints when there's new block coming from the network (possibly new round)'''
+        pass
+    
     def on_submit_share(self, worker_name, block_header, block_hash, shares, timestamp, is_valid):
         log.info("%s %s %s" % (block_hash, 'valid' if is_valid else 'INVALID', worker_name))
     
@@ -49,6 +65,7 @@ class PredictableTimestamperInterface(TimestamperInterface):
 class Interfaces(object):
     worker_manager = None
     share_manager = None
+    share_limiter = None
     timestamper = None
     template_registry = None
     
@@ -59,6 +76,10 @@ class Interfaces(object):
     @classmethod        
     def set_share_manager(cls, manager):
         cls.share_manager = manager
+
+    @classmethod        
+    def set_share_limiter(cls, limiter):
+        cls.share_limiter = limiter
     
     @classmethod
     def set_timestamper(cls, manager):

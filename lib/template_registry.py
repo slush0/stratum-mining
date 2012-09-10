@@ -30,7 +30,7 @@ class TemplateRegistry(object):
     service and implements block validation and submits.'''
     
     def __init__(self, block_template_class, coinbaser, bitcoin_rpc, instance_id,
-                 on_block_callback):
+                 on_template_callback, on_block_callback):
         self.prevhashes = {}
         self.jobs = weakref.WeakValueDictionary()
         
@@ -42,6 +42,7 @@ class TemplateRegistry(object):
         self.block_template_class = block_template_class
         self.bitcoin_rpc = bitcoin_rpc
         self.on_block_callback = on_block_callback
+        self.on_template_callback = on_template_callback
         
         self.last_block = None
         self.update_in_progress = False
@@ -89,7 +90,16 @@ class TemplateRegistry(object):
                 del self.prevhashes[ph]
                 
         log.info("New template for %s" % prevhash)
-        self.on_block_callback(new_block)
+
+        if new_block:
+            # Tell the system about new block
+            # It is mostly important for share manager
+            self.on_block_callback(prevhash)
+
+        # Everything is ready, let's broadcast jobs!
+        self.on_template_callback(new_block)
+        
+
         #from twisted.internet import reactor
         #reactor.callLater(10, self.on_block_callback, new_block) 
               

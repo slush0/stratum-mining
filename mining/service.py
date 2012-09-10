@@ -26,6 +26,8 @@ class MiningService(GenericService):
         '''Connect this RPC call to 'bitcoind -blocknotify' for 
         instant notification about new block on the network.
         See blocknotify.sh in /scripts/ for more info.'''
+        
+        log.info("New block notification received")
         Interfaces.template_registry.update_block()
         return True 
     
@@ -50,13 +52,12 @@ class MiningService(GenericService):
         
         extranonce1 = Interfaces.template_registry.get_new_extranonce1()
         extranonce2_size = Interfaces.template_registry.extranonce2_size
-
+        extranonce1_hex = binascii.hexlify(extranonce1)
+        
         session = self.connection_ref().get_session()
         session['extranonce1'] = extranonce1
         session['difficulty'] = 1 # Following protocol specs, default diff is 1
 
-        extranonce1_hex = binascii.hexlify(extranonce1)
-            
         return Pubsub.subscribe(self.connection_ref(), MiningSubscription()) + (extranonce1_hex, extranonce2_size)
     
     '''    
@@ -73,7 +74,7 @@ class MiningService(GenericService):
         log.info("LEN %.03f" % (time.time() - start))
         return ret
     '''
-    
+        
     def submit(self, worker_name, job_id, extranonce2, ntime, nonce):
         '''Try to solve block candidate using given parameters.'''
         
@@ -91,9 +92,10 @@ class MiningService(GenericService):
             raise SubmitException("Connection is not subscribed for mining")
         
         difficulty = session['difficulty']
-
         submit_time = Interfaces.timestamper.time()
-        
+    
+        Interfaces.share_limiter.submit(self.connection_ref, difficulty, submit_time)
+            
         # This checks if submitted share meet all requirements
         # and it is valid proof of work.
         try:

@@ -19,9 +19,11 @@ application = stratum.setup(on_startup)
 import mining
 
 from mining.interfaces import Interfaces
-from mining.interfaces import WorkerManagerInterface, ShareManagerInterface, TimestamperInterface
+from mining.interfaces import WorkerManagerInterface, TimestamperInterface, \
+                            ShareManagerInterface, ShareLimiterInterface
 
 Interfaces.set_share_manager(ShareManagerInterface())
+Interfaces.set_share_limiter(ShareLimiterInterface())
 Interfaces.set_worker_manager(WorkerManagerInterface())
 Interfaces.set_timestamper(TimestamperInterface())
 
