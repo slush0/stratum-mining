@@ -28,7 +28,7 @@ class ShareManagerInterface(object):
     def on_submit_share(self, worker_name, block_header, block_hash, shares, timestamp, is_valid):
         log.info("%s %s %s" % (block_hash, 'valid' if is_valid else 'INVALID', worker_name))
     
-    def on_submit_block(self, worker_name, block_header, block_hash, timestamp, is_accepted):
+    def on_submit_block(self, is_accepted, worker_name, block_header, block_hash, timestamp):
         log.info("Block %s %s" % (block_hash, 'ACCEPTED' if is_accepted else 'REJECTED'))
     
 class TimestamperInterface(object):

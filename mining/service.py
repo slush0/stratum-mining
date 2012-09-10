@@ -2,16 +2,13 @@ import binascii
 from twisted.internet import defer
 
 from stratum.services import GenericService, admin
-from stratum.custom_exceptions import ServiceException
 from stratum.pubsub import Pubsub
 from interfaces import Interfaces
 from subscription import MiningSubscription
+from lib.exceptions import SubmitException
 
 import stratum.logger
 log = stratum.logger.get_logger('mining')
-
-class SubmitException(ServiceException):
-    pass
                 
 class MiningService(GenericService):
     '''This service provides public API for Stratum mining proxy
@@ -95,18 +92,28 @@ class MiningService(GenericService):
         
         difficulty = session['difficulty']
 
+        submit_time = Interfaces.timestamper.time()
+        
         # This checks if submitted share meet all requirements
         # and it is valid proof of work.
-        (is_valid, reason, block_header, block_hash) = Interfaces.template_registry.submit_share(job_id,
-                                                worker_name, extranonce1_bin, extranonce2, ntime, nonce, difficulty,
-                                                Interfaces.share_manager.on_submit_block)
-   
-        # block_header and block_hash may be None when submitted data are corrupted     
+        try:
+            (block_header, block_hash, on_submit) = Interfaces.template_registry.submit_share(job_id,
+                                                worker_name, extranonce1_bin, extranonce2, ntime, nonce, difficulty)
+        except SubmitException:
+            # block_header and block_hash are None when submitted data are corrupted
+            Interfaces.share_manager.on_submit_share(worker_name, None, None, difficulty,
+                                                 submit_time, False)    
+            raise
+            
+             
         Interfaces.share_manager.on_submit_share(worker_name, block_header, block_hash, difficulty,
-                                                 Interfaces.timestamper.time(), is_valid)
+                                                 submit_time, True)
         
-        if not is_valid:
-            raise SubmitException(reason)
+        if on_submit != None:
+            # Pool performs submitblock() to bitcoind. Let's hook
+            # to result and report it to share manager
+            on_submit.addCallback(Interfaces.share_manager.on_submit_block,
+                        worker_name, block_header, block_hash, submit_time)
 
         return True
             

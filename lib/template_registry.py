@@ -3,6 +3,9 @@ import binascii
 import util
 import StringIO
 
+from twisted.internet import defer
+from lib.exceptions import SubmitException
+
 import stratum.logger
 log = stratum.logger.get_logger('template_registry')
 
@@ -133,23 +136,23 @@ class TemplateRegistry(object):
             j = self.jobs[job_id]
         except:
             log.info("Job id '%s' not found" % job_id)
-            return False
+            return None
         
         # Now we have to check if job is still valid.
         # Unfortunately weak references are not bulletproof and
         # old reference can be found until next run of garbage collector.
         if j.prevhash_hex not in self.prevhashes:
             log.info("Prevhash of job '%s' is unknown" % job_id)
-            return False
+            return None
         
         if j not in self.prevhashes[j.prevhash_hex]:
             log.info("Job %s is unknown" % job_id)
-            return False
+            return None
         
-        return True
+        return j
         
     def submit_share(self, job_id, worker_name, extranonce1_bin, extranonce2, ntime, nonce,
-                     difficulty, submitblock_callback):
+                     difficulty):
         '''Check parameters and finalize block template. If it leads
            to valid block candidate, asynchronously submits the block
            back to the bitcoin network.
@@ -162,33 +165,29 @@ class TemplateRegistry(object):
         
         # Check if extranonce2 looks correctly. extranonce2 is in hex form...
         if len(extranonce2) != self.extranonce2_size * 2:
-            return (False, "Incorrect size of extranonce2. Expected %d chars" % (self.extranonce2_size*2), None, None)
+            raise SubmitException("Incorrect size of extranonce2. Expected %d chars" % (self.extranonce2_size*2))
         
         # Check for job
-        if not self.get_job(job_id):
-            return (False, "Job '%s' not found" % job_id, None, None)
-            
-        try:
-            job = self.jobs[job_id]
-        except KeyError:
-            return (False, "Job '%s' not found" % job_id, None, None)
+        job = self.get_job(job_id)
+        if job == None:
+            raise SubmitException("Job '%s' not found" % job_id)
                 
         # Check if ntime looks correct
         if len(ntime) != 8:
-            return (False, "Incorrect size of ntime. Expected 8 chars", None, None)
+            raise SubmitException("Incorrect size of ntime. Expected 8 chars")
 
         if not job.check_ntime(int(ntime, 16)):
-            return (False, "Ntime out of range", None, None)
+            raise SubmitException("Ntime out of range")
         
         # Check nonce        
         if len(nonce) != 8:
-            return (False, "Incorrect size of nonce. Expected 8 chars", None, None)
+            raise SubmitException("Incorrect size of nonce. Expected 8 chars")
         
         # Check for duplicated submit
         if not job.register_submit(extranonce1_bin, extranonce2, ntime, nonce):
             log.info("Duplicate from %s, (%s %s %s %s)" % \
                     (worker_name, binascii.hexlify(extranonce1_bin), extranonce2, ntime, nonce))
-            return (False, "Duplicate share", None, None)
+            raise SubmitException("Duplicate share")
         
         # Now let's do the hard work!
         # ---------------------------
@@ -217,7 +216,7 @@ class TemplateRegistry(object):
                  
         target_user = self.diff_to_target(difficulty)        
         if hash_int > target_user:
-            return (False, "Share is above target", None, None)
+            raise SubmitException("Share is above target")
 
         # Mostly for debugging purposes
         target_info = self.diff_to_target(100000)
@@ -235,32 +234,11 @@ class TemplateRegistry(object):
             if not job.is_valid():
                 # Should not happen
                 log.error("Final job validation failed!")
-                return (False, 'Job validation failed', header_hex, block_hash_hex)
                             
             # 7. Submit block to the network
-            submit_time = Interfaces.timestamper.time()
             serialized = binascii.hexlify(job.serialize())
-            d = self.bitcoin_rpc.submitblock(serialized)
+            on_submit = self.bitcoin_rpc.submitblock(serialized)
             
-            # Submit is lazy, we don't need to wait for the result
-            # Callback will just register success or failure to share manager
-            d.addCallback(self._on_submitblock, submitblock_callback,
-                          worker_name, header_hex, block_hash_hex, submit_time)
-            d.addErrback(self._on_submitblock_failure, submitblock_callback,
-                         worker_name, header_hex, block_hash_hex, submit_time)
-            
-            return (True, '', header_hex, block_hash_hex)
+            return (header_hex, block_hash_hex, on_submit)
         
-        return (True, '', header_hex, block_hash_hex)
-    
-    def _on_submitblock(self, is_accepted, callback, worker_name, block_header, block_hash, timestamp):
-        '''Helper method, bridges call from deferred to method reference given in submit()'''
-        # Forward submitblock result to share manager
-        callback(worker_name, block_header, block_hash, timestamp, is_accepted)
-        return is_accepted
-    
-    def _on_submitblock_failure(self, failure, callback, worker_name, block_header, block_hash, timestamp):
-        '''Helper method, bridges call from deferred to method reference given in submit()'''
-        # Forward submitblock failure to share manager
-        callback(worker_name, block_header, block_hash, timestamp, False)
-        log.exception(failure)
+        return (header_hex, block_hash_hex, None)
