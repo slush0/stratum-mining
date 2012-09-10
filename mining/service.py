@@ -34,7 +34,18 @@ class MiningService(GenericService):
     
     def authorize(self, worker_name, worker_password):
         '''Let authorize worker on this connection.'''
-        return Interfaces.worker_manager.authorize(worker_name, worker_password)
+        
+        session = self.connection_ref().get_session()
+        session.setdefault('authorized', {})
+        
+        if Interfaces.worker_manager.authorize(worker_name, worker_password):
+            session['authorized'][worker_name] = worker_password
+            return True
+        
+        else:
+            if worker_name in session['authorized']:
+                del session['authorized'][worker_name]
+            return False
         
     def subscribe(self):
         '''Subscribe for receiving mining jobs. This will
@@ -70,6 +81,12 @@ class MiningService(GenericService):
         '''Try to solve block candidate using given parameters.'''
         
         session = self.connection_ref().get_session()
+        session.setdefault('authorized', {})
+        
+        # Check if worker is authorized to submit shares
+        if not Interfaces.worker_manager.authorize(worker_name,
+                        session['authorized'].get(worker_name)):
+            raise SubmitException("Worker is not authorized")
 
         # Check if extranonce1 is in connection session
         extranonce1_bin = session.get('extranonce1', None)
