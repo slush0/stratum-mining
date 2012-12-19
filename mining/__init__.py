@@ -1,6 +1,7 @@
 from service import MiningService
 from subscription import MiningSubscription
 from twisted.internet import defer
+import time
 
 @defer.inlineCallbacks
 def setup(on_startup):
@@ -27,6 +28,20 @@ def setup(on_startup):
                              settings.BITCOIN_TRUSTED_PORT,
                              settings.BITCOIN_TRUSTED_USER,
                              settings.BITCOIN_TRUSTED_PASSWORD)
+
+    import stratum.logger
+    log = stratum.logger.get_logger('mining')
+
+    log.info('Waiting for bitcoin RPC...')
+
+    while True:
+        try:
+            result = (yield bitcoin_rpc.getblocktemplate())
+            if isinstance(result, dict):
+                log.info('Response from bitcoin RPC OK')
+                break
+        except:
+            time.sleep(1)
     
     coinbaser = SimpleCoinbaser(bitcoin_rpc, settings.CENTRAL_WALLET)
     (yield coinbaser.on_load)
@@ -46,8 +61,6 @@ def setup(on_startup):
     # This is just failsafe solution when -blocknotify
     # mechanism is not working properly    
     BlockUpdater(registry, bitcoin_rpc)
-    
-    import stratum.logger
-    log = stratum.logger.get_logger('mining')
+
     log.info("MINING SERVICE IS READY")
     on_startup.callback(True)  
