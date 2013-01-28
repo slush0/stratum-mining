@@ -188,11 +188,16 @@ def deser_uint256_be(f):
         r += t << (i * 32)
     return r
 
-def ser_number(num):
+def ser_number(n):
     # For encoding nHeight into coinbase
-    d = struct.pack("<I", num).rstrip("\x00")
-    return chr(len(d)) + d
-    
+    s = bytearray(b'\1')
+    while n > 127:
+        s[0] += 1
+        s.append(n % 256)
+        n //= 256
+    s.append(n)
+    return bytes(s)
+
 def script_to_address(addr):
     d = address_to_pubkeyhash(addr)
     if not d:
