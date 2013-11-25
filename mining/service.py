@@ -46,7 +46,7 @@ class MiningService(GenericService):
                 del session['authorized'][worker_name]
             return False
         
-    def subscribe(self):
+    def subscribe(self, *args):
         '''Subscribe for receiving mining jobs. This will
         return subscription details, extranonce1_hex and extranonce2_size'''
         
