@@ -13,17 +13,17 @@ def setup(on_startup):
 
     from stratum import settings
     from interfaces import Interfaces
-    
+
     # Let's wait until share manager and worker manager boot up
     (yield Interfaces.share_manager.on_load)
     (yield Interfaces.worker_manager.on_load)
-    
+
     from lib.block_updater import BlockUpdater
     from lib.template_registry import TemplateRegistry
     from lib.bitcoin_rpc import BitcoinRPC
     from lib.block_template import BlockTemplate
     from lib.coinbaser import SimpleCoinbaser
-    
+
     bitcoin_rpc = BitcoinRPC(settings.BITCOIN_TRUSTED_HOST,
                              settings.BITCOIN_TRUSTED_PORT,
                              settings.BITCOIN_TRUSTED_USER,
@@ -42,10 +42,10 @@ def setup(on_startup):
                 break
         except:
             time.sleep(1)
-    
+
     coinbaser = SimpleCoinbaser(bitcoin_rpc, settings.CENTRAL_WALLET)
     (yield coinbaser.on_load)
-    
+
     registry = TemplateRegistry(BlockTemplate,
                                 coinbaser,
                                 bitcoin_rpc,
@@ -56,11 +56,11 @@ def setup(on_startup):
     # Template registry is the main interface between Stratum service
     # and pool core logic
     Interfaces.set_template_registry(registry)
-    
+
     # Set up polling mechanism for detecting new block on the network
     # This is just failsafe solution when -blocknotify
-    # mechanism is not working properly    
+    # mechanism is not working properly
     BlockUpdater(registry, bitcoin_rpc)
 
     log.info("MINING SERVICE IS READY")
-    on_startup.callback(True)  
+    on_startup.callback(True)
