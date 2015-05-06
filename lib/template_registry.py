@@ -193,19 +193,19 @@ class TemplateRegistry(object):
         if len(nonce) != 8:
             raise SubmitException("Incorrect size of nonce. Expected 8 chars")
 
+        # Convert from hex to binary
+        extranonce2_bin = binascii.unhexlify(extranonce2)
+        ntime_bin = binascii.unhexlify(ntime)
+        nonce_bin = binascii.unhexlify(nonce)
+
         # Check for duplicated submit
-        if not job.register_submit(extranonce1_bin, extranonce2, ntime, nonce):
+        if not job.register_submit(extranonce1_bin, extranonce2_bin, ntime_bin, nonce_bin):
             log.info("Duplicate from %s, (%s %s %s %s)" % \
                     (worker_name, binascii.hexlify(extranonce1_bin), extranonce2, ntime, nonce))
             raise SubmitException("Duplicate share")
 
         # Now let's do the hard work!
         # ---------------------------
-
-        # 0. Some sugar
-        extranonce2_bin = binascii.unhexlify(extranonce2)
-        ntime_bin = binascii.unhexlify(ntime)
-        nonce_bin = binascii.unhexlify(nonce)
 
         # 1. Build coinbase
         coinbase_bin = job.serialize_coinbase(extranonce1_bin, extranonce2_bin)
