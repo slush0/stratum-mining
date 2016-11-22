@@ -10,6 +10,8 @@ from twisted.web import client
 import stratum.logger
 log = stratum.logger.get_logger('bitcoin_rpc')
 
+gbt_known_rules = ["segwit"]
+
 class BitcoinRPC(object):
 
     def __init__(self, host, port, username, password):
@@ -51,7 +53,7 @@ class BitcoinRPC(object):
 
     @defer.inlineCallbacks
     def getblocktemplate(self):
-        resp = (yield self._call('getblocktemplate', []))
+        resp = (yield self._call('getblocktemplate', [{"rules": gbt_known_rules}]))
         defer.returnValue(json.loads(resp)['result'])
 
     @defer.inlineCallbacks
