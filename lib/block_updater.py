@@ -44,7 +44,7 @@ class BlockUpdater(object):
             else:
                 current_prevhash = None
 
-            prevhash = util.reverse_hash((yield self.bitcoin_rpc.prevhash()))
+            prevhash = yield self.bitcoin_rpc.prevhash()
             if prevhash and prevhash != current_prevhash:
                 log.info("New block! Prevhash: %s" % prevhash)
                 update = True
